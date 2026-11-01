@@ -44,3 +44,7 @@ Implemented with React, TypeScript, Vite and Tailwind v4. Shared shadcn-style Ra
 ## Scope guard
 
 Preserve `app/domain.py`, `app/extraction.py` and API route contracts. Keep receipt confirmation, duplicate checks, null quantities, partial collection, report data and demo semantics. Changes are frontend presentation, client-side validation, tooling and documentation only.
+
+## Reliability pass after the UI redesign
+
+The user subsequently authorized a full project audit and bug fixes, including backend correctness. See [the current audit](docs/AUDIT.md) for findings and dispositions, and [verification](docs/VERIFICATION.md) for 41 Python tests, 7 frontend tests and remaining OCR/browser limits. The earlier presentation-only scope above describes the original redesign, not this later authorization.

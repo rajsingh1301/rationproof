@@ -56,7 +56,7 @@ Working pitch: **Aapke ration ka saaf hisaab — jo milna tha, jo receipt mein h
 
 ## Development order
 
-1. Working local upload → review → comparison → export flow. **Implemented in v0.1.**
+1. Working local upload → review → comparison → export flow. **Text/manual path implemented; image runtime acceptance is still pending.**
 2. Regression coverage for missing quantities, month filtering, duplicates and partial collection. **Implemented.**
 3. Validate actual local image extraction and browser flow. **Pending:** OCR adapter compiles, but the sample image call fails in the current environment; local server/browser startup is restricted. See the development log. Text/manual backend checks pass.
 4. Collect 3–5 consented interviews with cardholders/community volunteers. Validate whether receipts are available, whether users can weigh grain, and whether this workflow helps them. Do not claim user validation beforehand.

@@ -1,80 +1,126 @@
 # RationProof
 
-**Aapke ration ka saaf hisaab.** A local prototype for comparing ration receipts with user-entered entitlement and measured collection quantities.
+**Aapke ration ka saaf hisaab.** Compare what your ration receipts record with what you measured receiving, and keep each difference linked to its source.
 
-## Run
+A matching monthly total can hide two conflicting receipt entries. RationProof keeps those differences visible, separates an uncollected balance from a delivery difference, and leaves missing measurements unknown. It is a local prototype for a household or community volunteer; real-world usefulness has not yet been validated with users.
 
-Requires Python 3.11+; macOS image reading also needs the installed Xcode command line tools.
+## The 30-second demonstration
 
-**On this Mac:** in Finder, double-click `Start RationProof.command`. It starts the server in Terminal and opens the browser after the app responds. Keep that Terminal window open while using the app. The localhost link works only while the server is running.
+Open **Sample cases → Load offsetting case**. Two synthetic receipts each record 10 kg. The entered measurements are 5 kg and 15 kg. Both monthly totals are 20 kg, but the report still flags the two receipt differences. Expand the evidence, then download the report as JSON.
 
-After the frontend redesign, first run `bash scripts/setup.sh`, then `bash scripts/run.sh`. Setup installs locked frontend dependencies and builds the app into `static/`. For frontend work, use a second terminal and run `npm run dev -- --open`; its `/api` calls proxy to the FastAPI server. The frontend uses React, TypeScript, Vite, Tailwind CSS v4 and Radix primitives; the FastAPI API and validated receipt calculations remain in place.
+All four sample cases use the actual Python comparison endpoint. Synthetic data is labelled in the interface and export. No saved result substitutes for a failed API call.
+
+## Run locally
+
+Requires **Python 3.11+**, **Node.js 20+ and npm**. Initial setup needs access to the package registries. No account, API key, `.env` file or cloud model is required.
 
 ```sh
-cd /Users/mayankraj/developer/rationproof
+git clone https://github.com/rajsingh1301/rationproof.git
+cd rationproof
 bash scripts/setup.sh
 bash scripts/run.sh
 ```
 
-Open **http://127.0.0.1:8765**. Stop with Ctrl+C.
+Open **http://127.0.0.1:8765** and keep that Terminal window open. Stop with Ctrl+C. In an existing checkout, run the last two commands from the project folder. On macOS, `Start RationProof.command` is a Finder launcher after setup.
 
-If the page does not load, run the command above in the Mac's normal Terminal and check its output. This agent's managed execution environment currently blocks local server startup with `operation not permitted`; the server is not running automatically in the background.
+Setup creates an isolated Python environment for a new checkout, checks installed versions against `requirements.txt`, installs locked frontend packages and builds the browser app. Existing environments are reused after the version check. The two TanStack tarballs under `vendor/` are locked package dependencies included for reproducibility.
 
-The setup script creates `.venv` with access to installed system packages and installs missing requirements when necessary. For a fully isolated Python environment instead:
+**If the page does not load:** run `bash scripts/run.sh` in your normal Terminal and inspect the error. This managed agent environment refuses the localhost bind with `operation not permitted`; it has not left a server running. If the error is `address already in use`, inspect the existing process before starting another instance. If assets are missing, run `npm ci && npm run build`.
+
+### Image reading is optional and currently unverified on this device
+
+On macOS, setup tries to compile the Apple Vision adapter using Xcode command line tools. An installed `tesseract` executable with English language data is another local reader; if Vision fails, Python tries Tesseract when available. No document is silently sent to an external API.
 
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-bash scripts/setup.sh
+.venv/bin/python scripts/doctor.py
+.venv/bin/python scripts/doctor.py --ocr
 ```
 
-On macOS, setup compiles a local Apple Vision OCR adapter. On other systems, installing `tesseract` with English language data enables the alternative OCR path. Without OCR, receipt text/manual entry and the comparison engine work normally. No API key is needed.
+The second command performs **actual image recognition** on the labelled synthetic fixture and returns a failing exit code when recognition fails. In this managed environment it currently returns **HTTP 503**; the underlying Vision call fails, and Tesseract is not installed. Compiling a reader is not evidence that recognition works. The UI distinguishes an installed/unverified reader from the latest successful or failed read.
 
-## Try it
+Use **Paste text**, a UTF-8 `.txt` receipt, or **Enter manually** to use the comparison workflow independently. The downloadable sample text is a separate fixture, not a replacement OCR result.
 
-Use one of the sample buttons:
+## Workflow
 
-- **5 kg difference:** a synthetic receipt records 25 kg; the user reports 20 kg.
-- **Partial collection:** 15 kg recorded and received against a 25 kg entered entitlement. This leaves 10 kg to check/collect, with no reported delivery difference.
-- **Missing details:** received quantity is absent, so the app asks for more evidence.
+1. Add a PNG/JPG/WebP image, UTF-8 text file, pasted text, or manual receipt. Images are limited to 8 MB and 16 megapixels.
+2. Check the suggested transaction number, ISO date, commodity and quantity against the original. Enter the amount you measured; the app never copies the receipt amount into “received.”
+3. Confirm each receipt, select the transaction month and enter the entitlement from your official record. Leave unknown amounts blank. Mark whether all receipts so far are included.
+4. Compare records. Duplicate, conflicting, unreviewed and out-of-month entries are explained. Partial collection leaves a balance; opposite receipt differences remain visible.
+5. Download JSON containing the report, reviewed inputs and source text, or print/save PDF. Entries clear on refresh. Loading a sample or clearing a populated record asks before replacing it.
 
-For actual image extraction, download the sample receipt from the upload card and upload it again. Check its fields, enter your measured amount, confirm the receipt and compare. Samples are fictional and explicitly labelled.
+## Architecture
 
-Add multiple receipts to a monthly record. Each receipt must be reviewed; changing an input revokes confirmation. Use the report buttons to download JSON or print/save PDF. Reloading the page clears entries; only an explicitly downloaded report is retained.
+```mermaid
+flowchart LR
+    U[Receipt image / text / manual entry] --> UI[React + TypeScript workspace]
+    UI -->|image, temporary file| OCR[Python OCR orchestration]
+    OCR --> V[Apple Vision or Tesseract]
+    V --> P[Conservative Python field parser]
+    UI -->|pasted or uploaded text| P
+    P --> R[Unconfirmed suggestions + source text]
+    R --> H[Human review + measured quantity]
+    UI -->|manual fields| H
+    H --> A[FastAPI / Pydantic validation]
+    A --> D[Decimal comparisons + duplicate / month rules]
+    D --> E[Receipt evidence + monthly report]
+    E --> J[Explicit JSON download / print]
+```
 
-## Verification
+The ML component is pretrained OCR. Field parsing and arithmetic are deterministic Python; this is not a newly trained model or an LLM guessing weights. The macOS OCR bridge uses Swift to invoke Vision. The frontend uses React, Vite, Tailwind, Radix primitives, React Hook Form/Zod, TanStack Table and a chart loaded on demand. Light/dark tokens use zinc, one terracotta accent, an 8px radius and locally bundled Lexend 400/600.
 
-Current result: **32 Python tests pass** and JavaScript syntax checks pass. Browser verification is pending because this managed session cannot start a local listening server or Chromium. The Apple Vision adapter compiles, but sample-image recognition returned a runtime error in this environment; image extraction has not yet passed an end-to-end check. Text/manual processing and comparison are covered by passing API tests. See `DEVELOPMENT_LOG.md` for the exact limits.
+| Code | Responsibility |
+| --- | --- |
+| `app/extraction.py` | Local readers, temporary-image cleanup, conservative field suggestions |
+| `app/domain.py` | Validated decimal quantities, duplicate/month filtering, per-receipt arithmetic |
+| `app/main.py` | FastAPI routes, local page and nonce-based content security policy |
+| `frontend/workspace-app.tsx` | Review workspace, cancellable requests, sample replacement |
+| `frontend/components/` | Receipt forms, monthly context, report, dialogs and shared primitives |
+| `scripts/doctor.py` | Dependencies, built assets, text API and optional actual image check |
+
+## Verification and measured results
 
 ```sh
+npm run check
 .venv/bin/python -m unittest discover -s tests -v
-node --check static/app.js
+.venv/bin/python scripts/evaluate.py
+.venv/bin/python scripts/doctor.py
 ```
 
-Optional browser smoke test (server running, Playwright and Chromium installed):
+Current checks: **41 Python tests**, **7 frontend regression tests**, lint, typecheck and production build pass. Python tests include the actual in-process text → review → comparison HTTP flow. OCR fallback/cleanup tests use mocked subprocesses and do not establish recognition accuracy.
+
+The [recorded evaluation](docs/evaluation.json) contains **22 curated synthetic text cases / 23 labelled fields**. The parser produced 8 correct suggestions and 15 correct abstentions, with no unsafe suggestions on these cases. An illustrative “first quantity on the line” baseline produced 14 unsafe suggestions. These cases informed development: they are **not held-out data, an OCR benchmark, or evidence of field accuracy on real receipts**. See [verification details](docs/VERIFICATION.md).
+
+Optional browser check, with a running server and an existing Playwright + matching Chromium installation:
 
 ```sh
 node scripts/browser_check.cjs
+# Add the actual image check only when a local reader is available:
+RATIONPROOF_CHECK_OCR=1 node scripts/browser_check.cjs
 ```
 
-For an already installed Playwright package, set `RATIONPROOF_PLAYWRIGHT` to its absolute directory. Screenshots and logs go to ignored `artifacts/`. No browser dependencies are needed to run the app.
+Set `RATIONPROOF_PLAYWRIGHT` to the absolute package directory if Playwright is installed elsewhere. No browser dependency is needed to run the app. Screenshots go to ignored `artifacts/`. The browser suite has been updated for the React UI but **has not run successfully here**: the current Playwright installation lacks its matching browser executable, and localhost startup is denied. Mobile layout, runtime CSP behavior and print output still need a normal-browser review.
 
-## Implemented
+For frontend development, keep FastAPI running and use `npm run dev -- --open` in a second terminal. The Vite proxy forwards local API calls. Rebuild before testing the FastAPI-served production page.
 
-- Responsive interface, local image OCR, pasted text and manual receipts.
-- Mandatory human confirmation; missing and ambiguous values stay unknown.
-- Decimal arithmetic; duplicate and date filtering; separate per-receipt and monthly comparisons.
-- Evidence text and original-image preview, synthetic demos, report export and print.
-- Local requests only, no persistent uploaded files or browser storage.
+## Privacy and limits
 
-## Current limits
+Application uploads are not written to a persistent ledger, logs or browser storage. Temporary OCR images are removed after processing; the operating system may maintain its own OCR caches. Browser memory holds current entries and image previews. Only the optional theme preference uses localStorage. Exported reports intentionally contain source text and reviewed inputs.
 
-Version 0.1 is an initial prototype. Automatic parsing supports English single-line commodity/quantity records, ISO dates, rice/wheat and kg/g units. It deliberately abstains on multi-quantity lines. Multi-column tables may need full manual entry. Hindi image OCR, arbitrary receipt layouts, PDF input, automatic entitlement scanning, allocation-month/arrears handling, verified government integration and production hosting are not implemented. Exact transaction IDs and file hashes catch many duplicates; different images with absent/incorrect IDs may evade deduplication. Real-world receipt accuracy and user impact are unmeasured.
+- Initial commodities: rice and wheat, kilograms with up to three decimals. The parser expects one explicit unit-bearing quantity per commodity line and ISO dates. Ambiguous labels, signs, repeated commodities and unsupported precision require manual entry.
+- Hindi commodity aliases and Devanagari digits work in the **text parser**. Hindi image OCR, arbitrary receipt layouts and PDF ingestion are unverified or unsupported.
+- Month filtering uses the transaction date. Allocation-month arrears and entitlement document extraction are future work.
+- Exact transaction/date and document hashes identify many duplicates. Missing or wrong IDs across different images can evade detection.
+- Entitlement and received weights are user-entered. Reports do not authenticate receipts, verify official entitlement, independently measure grain or prove fraud.
+- Loopback-only development server, no production hosting or multi-user authentication. Not ready for handling public uploads on an exposed server.
+- Real beneficiary accuracy, interviews, time saved and household impact remain unmeasured.
 
-The comparison uses uploaded/user-reviewed data and user-reported weight. It cannot establish official entitlement, authenticate documents, independently measure grain, or prove fraud. The device's local OCR service may use temporary OS caches; the application removes its own temporary image after processing.
+## Hackathon material and provenance
 
-## Project instructions and event history
+- [Audit and remaining priorities](docs/AUDIT.md)
+- [2–3 minute demo script](docs/DEMO.md)
+- [Five-slide pitch outline](docs/PITCH.md)
+- [Development history](DEVELOPMENT_LOG.md) and [project instructions](PROJECT_INSTRUCTIONS.md)
 
-See [PROJECT_INSTRUCTIONS.md](PROJECT_INSTRUCTIONS.md) for the brief, assumptions, event sources, acceptance criteria and roadmap, and [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for completed work.
+Target: Neural Storm, proposed Human Impact track. The recorded listing places the build window at **2–4 November 2026, 20:00 IST**. Initial code and these improvements were made **1 November, before the event**. Pre-event eligibility and acceptance of the Python-orchestrated Swift OCR adapter remain organizer questions. Preserve the actual Git history and disclose existing work; no eligibility or “world first” claim is made. Do not submit the prototype as fully working image AI until actual OCR has passed on the demo device.
 
-Initial code was developed **1 November 2026**, before Neural Storm's published 2–4 November build window. Eligibility of pre-event work is unresolved; preserve and disclose this history. AI assistance: OpenAI Codex generated and reviewed the initial code, documentation and tests. Apple Vision is the pretrained image OCR engine on macOS; field parsing and arithmetic are deterministic Python.
+**AI assistance:** OpenAI Codex assisted with implementation, review, documentation and tests. No independent user study or organizer approval is implied.
