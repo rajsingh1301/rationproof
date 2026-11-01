@@ -1,0 +1,339 @@
+{
+  "evaluated_at": "2026-11-01T11:31:52.838206+00:00",
+  "scope": "Curated synthetic TEXT parser regression cases. No held-out data, real receipts, or image OCR accuracy measured.",
+  "baseline_definition": "First explicit unit-bearing quantity on each commodity line. An illustrative naive baseline, not a competing product or model.",
+  "conservative_parser": {
+    "summary": {
+      "cases": 22,
+      "cases_matching_labels": 22,
+      "labelled_fields": 23,
+      "correct_suggestions": 8,
+      "unsafe_suggestions": 0,
+      "correct_abstentions": 15,
+      "unnecessary_abstentions": 0
+    },
+    "cases": [
+      {
+        "id": "clear-rice",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "two-lines",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25",
+          "wheat": "2.5"
+        }
+      },
+      {
+        "id": "grams",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "1.5"
+        }
+      },
+      {
+        "id": "explicit-zero",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "0"
+        }
+      },
+      {
+        "id": "hindi-text-digits",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "decimal",
+        "matches_label": true,
+        "suggestions": {
+          "wheat": "1.250"
+        }
+      },
+      {
+        "id": "plural-unit",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "unsupported-bags",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "multiple-quantities",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "shared-label",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null,
+          "wheat": null
+        }
+      },
+      {
+        "id": "entitlement-not-issued",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "balance-not-issued",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "ascii-negative",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "unicode-negative",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "unsupported-precision",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "too-large",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "parentheses",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "thousands-comma",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "fraction",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "repeated-commodity",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "below-gram-precision",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "no-commodity",
+        "matches_label": true,
+        "suggestions": {}
+      }
+    ]
+  },
+  "first_quantity_baseline": {
+    "summary": {
+      "cases": 22,
+      "cases_matching_labels": 9,
+      "labelled_fields": 23,
+      "correct_suggestions": 8,
+      "unsafe_suggestions": 14,
+      "correct_abstentions": 1,
+      "unnecessary_abstentions": 0
+    },
+    "cases": [
+      {
+        "id": "clear-rice",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "two-lines",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25",
+          "wheat": "2.5"
+        }
+      },
+      {
+        "id": "grams",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "1.5"
+        }
+      },
+      {
+        "id": "explicit-zero",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "0"
+        }
+      },
+      {
+        "id": "hindi-text-digits",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "decimal",
+        "matches_label": true,
+        "suggestions": {
+          "wheat": "1.250"
+        }
+      },
+      {
+        "id": "plural-unit",
+        "matches_label": true,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "unsupported-bags",
+        "matches_label": true,
+        "suggestions": {
+          "rice": null
+        }
+      },
+      {
+        "id": "multiple-quantities",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "shared-label",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25",
+          "wheat": "25"
+        }
+      },
+      {
+        "id": "entitlement-not-issued",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "balance-not-issued",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "10"
+        }
+      },
+      {
+        "id": "ascii-negative",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "unicode-negative",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "unsupported-precision",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "1.2345"
+        }
+      },
+      {
+        "id": "too-large",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "10001"
+        }
+      },
+      {
+        "id": "parentheses",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "25"
+        }
+      },
+      {
+        "id": "thousands-comma",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "200"
+        }
+      },
+      {
+        "id": "fraction",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "2"
+        }
+      },
+      {
+        "id": "repeated-commodity",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "6"
+        }
+      },
+      {
+        "id": "below-gram-precision",
+        "matches_label": false,
+        "suggestions": {
+          "rice": "0.0005"
+        }
+      },
+      {
+        "id": "no-commodity",
+        "matches_label": true,
+        "suggestions": {}
+      }
+    ]
+  }
+}
