@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./frontend', import.meta.url)) } },
   base: '/static/',
   publicDir: false,
-  server: { proxy: { '/api': {
+  server: { proxy: { '/static/demo-receipt': { target: 'http://127.0.0.1:8765' }, '/api': {
     target: 'http://127.0.0.1:8765',
     configure(proxy) { proxy.on('proxyReq', request => { request.removeHeader('origin'); }); },
   } } },

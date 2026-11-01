@@ -13,7 +13,7 @@ from .domain import Ledger, StrictModel, reconcile
 from .extraction import extract_image, ocr_backend, ocr_runtime, parse_receipt
 
 ROOT = Path(__file__).resolve().parent.parent
-app = FastAPI(title="RationProof", version="0.1.0", docs_url="/api/docs")
+app = FastAPI(title="RationProof", version="0.2.0", docs_url="/api/docs")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 
