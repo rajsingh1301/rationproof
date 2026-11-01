@@ -3,10 +3,12 @@ import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ClipboardList, FileText, Info } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import type { Extraction, Health, Ledger, Report } from '@/lib/contracts';
 import { api, errorMessage, jsonOptions } from '@/lib/api';
 import { emptyValues, FormValues, ledgerSchema, sampleValues, toFormReceipt, toLedger } from '@/lib/form';
+import { RequestLane } from '@/lib/requests';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { monthLabel } from '@/lib/utils';
 import { WorkspaceShell } from '@/components/workspace-shell';
 import { ReceiptUpload } from '@/components/receipt-upload';
@@ -35,24 +37,30 @@ export function WorkspaceApp() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [ledger, setLedger] = useState<Ledger | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingSample, setPendingSample] = useState<'difference' | 'partial' | 'missing' | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [samplesOpen, setSamplesOpen] = useState(false);
-  const revision = useRef(0);
+  const uploads = useRef(new RequestLane());
+  const comparisons = useRef(new RequestLane());
   const previews = useRef(new Set<string>());
   const reduced = useReducedMotion();
 
-  const resetReport = useCallback(() => { revision.current += 1; setReport(null); setLedger(null); setReportError(null); setBusy(false); setLoadingReport(false); }, []);
-  const resetRecord = useCallback(() => {
-    resetReport(); for (const preview of previews.current) URL.revokeObjectURL(preview); previews.current.clear();
-    form.reset(emptyValues()); replace([]); setUploadError(null); toast.success('Monthly record cleared.');
-  }, [form, replace, resetReport]);
+  const resetReport = useCallback(() => {
+    comparisons.current.cancel(); setReport(null); setLedger(null); setReportError(null); setLoadingReport(false);
+  }, []);
+  const cancelUploads = () => { uploads.current.cancel(); setUploading(false); setUploadError(null); };
+  const clearPreviews = () => { for (const preview of previews.current) URL.revokeObjectURL(preview); previews.current.clear(); };
+  const resetRecord = () => {
+    cancelUploads(); resetReport(); clearPreviews(); form.reset(emptyValues()); replace([]);
+    toast.success('Monthly record cleared.');
+  };
   const checkHealth = useCallback(async () => {
     try { const result = await api<Health>('/api/health'); setHealth(result); setHealthError(null); }
     catch (error) { setHealth(null); setHealthError(errorMessage(error)); }
   }, []);
   useEffect(() => { void checkHealth(); const interval = window.setInterval(() => { void checkHealth(); }, 30000); return () => window.clearInterval(interval); }, [checkHealth]);
-  useEffect(() => () => { for (const preview of previews.current) URL.revokeObjectURL(preview); previews.current.clear(); }, []);
+  useEffect(() => { const urls = previews.current; const uploadLane = uploads.current; const compareLane = comparisons.current; return () => { uploadLane.cancel(); compareLane.cancel(); for (const url of urls) URL.revokeObjectURL(url); urls.clear(); }; }, []);
   useEffect(() => { const subscription = formWatch(() => { resetReport(); }); return () => subscription.unsubscribe(); }, [formWatch, resetReport]);
 
   const addExtraction = (data: Extraction, preview: string | null) => {
@@ -62,59 +70,77 @@ export function WorkspaceApp() {
     if (preview) previews.current.add(preview);
     append(toFormReceipt(data, preview)); resetReport(); setUploadError(null);
   };
-  const onFile = async (file: File) => {
-    if (file.size > 8 * 1024 * 1024) { setUploadError('Choose a file smaller than 8 MB.'); return; }
-    setUploadError(null); setBusy(true);
+  const extract = async (path: string, options: RequestInit, file?: File): Promise<boolean> => {
+    const request = uploads.current.start(); setUploadError(null); setUploading(true);
     try {
-      let extracted: Extraction;
-      if (file.name.toLowerCase().endsWith('.txt') || file.type === 'text/plain') {
-        const text = await file.text(); extracted = await api<Extraction>('/api/extract-text', jsonOptions({ text }));
-      } else {
-        const body = new FormData(); body.append('file', file); extracted = await api<Extraction>('/api/extract', { method: 'POST', body });
-      }
-      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
-      addExtraction(extracted, preview); toast.success('Receipt added', { description: 'Check the extracted fields against the original.' });
-    } catch (error) { const message = errorMessage(error); setUploadError(message); toast.error('Could not add this receipt', { description: message }); }
-    finally { setBusy(false); }
+      const data = await api<Extraction>(path, { ...options, signal: request.signal });
+      if (!uploads.current.current(request)) return false;
+      const preview = file?.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+      addExtraction(data, preview);
+      toast.success('Receipt added', { description: 'Check the fields against the original.' });
+      return true;
+    } catch (error) {
+      if (uploads.current.current(request)) setUploadError(errorMessage(error));
+      return false;
+    } finally {
+      if (uploads.current.current(request)) { uploads.current.finish(request); setUploading(false); }
+    }
   };
-  const onText = async (text: string) => {
-    setBusy(true); setUploadError(null);
-    try { addExtraction(await api<Extraction>('/api/extract-text', jsonOptions({ text })), null); toast.success('Receipt text added', { description: 'Check the suggested fields against the original.' }); return true; }
-    catch (error) { const message = errorMessage(error); setUploadError(message); toast.error('Could not read receipt text', { description: message }); return false; }
-    finally { setBusy(false); }
+  const onFile = (file: File) => {
+    if (file.size > 8 * 1024 * 1024) { setUploadError('Choose a file smaller than 8 MB.'); return; }
+    const body = new FormData(); body.append('file', file);
+    void extract('/api/extract', { method: 'POST', body }, file);
   };
-  const onManual = () => { addExtraction({ document_id: crypto.randomUUID(), receipt_id: '', date: '', confirmed: false, items: [], source_text: 'Manual entry.', warnings: [] }, null); toast.success('Receipt form added'); document.getElementById(`rid-${fields.length}`)?.focus(); };
-  const onCompare = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setReportError(null); setReport(null);
-    const valid = await form.trigger();
-    if (!valid) { document.querySelector<HTMLElement>('[aria-invalid=true]')?.focus(); toast.error('Review the highlighted fields.'); return; }
-    const values = form.getValues();
+  const onText = (text: string) => extract('/api/extract-text', jsonOptions({ text }));
+  const onManual = () => {
+    try {
+      const index = form.getValues('receipts').length;
+      addExtraction({ document_id: crypto.randomUUID(), receipt_id: '', date: '', confirmed: false, items: [], source_text: 'Manual entry.', warnings: [] }, null);
+      requestAnimationFrame(() => document.getElementById(`rid-${index}`)?.focus());
+    } catch (error) { setUploadError(errorMessage(error)); }
+  };
+  const compareValues = async (values: FormValues) => {
     if (!values.receipts.length) { toast.error('Add a receipt before comparing.'); return; }
-    const version = ++revision.current; setBusy(true); setLoadingReport(true);
-    try { const nextLedger = toLedger(values); const nextReport = await api<Report>('/api/reconcile', jsonOptions(nextLedger)); if (version !== revision.current) return; setReport(nextReport); setLedger(nextLedger); toast.success('Comparison ready'); }
-    catch (error) { if (version === revision.current) { const message = errorMessage(error); setReportError(message); toast.error('Could not compare these records', { description: message }); } }
-    finally { if (version === revision.current) { setBusy(false); setLoadingReport(false); } }
+    const request = comparisons.current.start(); setReportError(null); setReport(null); setLedger(null); setLoadingReport(true);
+    try {
+      const nextLedger = toLedger(values);
+      const nextReport = await api<Report>('/api/reconcile', { ...jsonOptions(nextLedger), signal: request.signal });
+      if (!comparisons.current.current(request)) return;
+      setReport(nextReport); setLedger(nextLedger); toast.success('Comparison ready');
+    } catch (error) {
+      if (comparisons.current.current(request)) setReportError(errorMessage(error));
+    } finally {
+      if (comparisons.current.current(request)) { comparisons.current.finish(request); setLoadingReport(false); }
+    }
   };
+  const compare = form.handleSubmit(compareValues, () => {
+    resetReport(); document.querySelector<HTMLElement>('[aria-invalid=true]')?.focus(); toast.error('Review the highlighted fields.');
+  });
+  const onCompare = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void compare(event); };
   const loadSample = (kind: 'difference' | 'partial' | 'missing') => {
-    for (const preview of previews.current) URL.revokeObjectURL(preview); previews.current.clear();
-    const values = sampleValues(kind); revision.current += 1; form.reset(values); setReport(null); setLedger(null); setReportError(null); setUploadError(null); replace(values.receipts); setTimeout(() => { void form.handleSubmit(async valid => {
-      const version = revision.current; setBusy(true); setLoadingReport(true);
-      try { const sampleLedger = toLedger(valid); const sampleReport = await api<Report>('/api/reconcile', jsonOptions(sampleLedger)); if (version === revision.current) { setLedger(sampleLedger); setReport(sampleReport); } }
-      catch (error) { if (version === revision.current) setReportError(errorMessage(error)); }
-      finally { if (version === revision.current) { setBusy(false); setLoadingReport(false); } }
-    })(); }, 0); toast.message('Synthetic sample loaded', { description: 'This example does not describe a real household.' });
+    cancelUploads(); resetReport(); clearPreviews();
+    const values = sampleValues(kind); form.reset(values); replace(values.receipts);
+    setPendingSample(null);
+    // Compare after field-array subscribers have processed the reset.
+    requestAnimationFrame(() => { void compareValues(form.getValues()); });
+    toast.message('Synthetic sample loaded');
+  };
+  const selectSample = (kind: 'difference' | 'partial' | 'missing') => {
+    if (form.getValues('receipts').length || form.formState.isDirty || uploading) setPendingSample(kind);
+    else loadSample(kind);
   };
   const removeReceipt = (index: number) => { const receipt = form.getValues(`receipts.${index}`); if (receipt?.preview) { URL.revokeObjectURL(receipt.preview); previews.current.delete(receipt.preview); } remove(index); resetReport(); };
 
   return <WorkspaceShell hasRecords={fields.length > 0} onReset={resetRecord} onSamples={() => setSamplesOpen(true)}>
-    <header className="space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{health?.ocr && <Badge tone="success">Local image reader installed</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
-    <FormProvider {...form}><form noValidate onSubmit={onCompare} className="space-y-10">
-      <section id="receipts" className="space-y-5" aria-labelledby="receipts-heading"><SectionHeader number="01" title="Receipts" description="Add a photo or enter the details yourself. Check every suggested field." count={fields.length} /><ReceiptUpload pending={busy} error={uploadError} onFile={file => { void onFile(file); }} onText={onText} onManual={onManual} />
+    <header className="no-print space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{health?.ocr && <Badge tone="success">Local image reader installed</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
+    <FormProvider {...form}><form noValidate onSubmit={onCompare} className="no-print grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_352px]">
+      <section id="receipts" className="space-y-5" aria-labelledby="receipts-heading"><SectionHeader number="01" title="Receipts" description="Add a photo or enter the details yourself. Check every suggested field." count={fields.length} /><ReceiptUpload pending={uploading} error={uploadError} onFile={onFile} onText={onText} onManual={onManual} />
         {fields.length === 0 ? <Card><CardContent><EmptyState icon={ClipboardList} title="No receipts in this record" description="Add a receipt above, or enter its details manually. You can also try a synthetic sample case." action={<Button variant="ghost" size="small" onClick={() => setSamplesOpen(true)}>View sample cases</Button>} /></CardContent></Card> : <div className="space-y-4" aria-label="Receipts for this month">{fields.map((field, index) => <motion.div key={field.id} initial={reduced ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}><ReceiptEditor index={index} onRemove={() => removeReceipt(index)} /></motion.div>)}</div>}
       </section>
-      <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1fr)_352px]"><section aria-label="Monthly comparison" className="min-w-0 space-y-4"><div className="flex items-start gap-3 rounded-md border bg-muted p-4"><Info className="size-4 mt-0.5" aria-hidden="true" /><p className="text-xs text-muted-foreground">A receipt amount is not a measurement. Enter the amount you actually received only after weighing it.</p></div><p className="flex items-center gap-3 text-xs text-muted-foreground"><FileText className="size-4" aria-hidden="true" />Your entries clear on refresh. Only a report you download is kept.</p></section><MonthlyContext busy={busy} /></div>
+      <MonthlyContext busy={loadingReport} disabled={uploading} />
     </form></FormProvider>
-    <div className="space-y-4 pt-2"><SectionHeader number="02" title="Comparison" description="Review the numbers with the receipt evidence and your measured amounts." /><Comparison report={report} ledger={ledger} pending={loadingReport} error={reportError} onRetry={() => { void form.handleSubmit(async values => { const version = ++revision.current; setLoadingReport(true); try { const nextLedger = toLedger(values); const nextReport = await api<Report>('/api/reconcile', jsonOptions(nextLedger)); if (version === revision.current) { setReport(nextReport); setLedger(nextLedger); setReportError(null); } } catch (error) { setReportError(errorMessage(error)); } finally { setLoadingReport(false); } })(); }} /></div>
-    <SampleDialog open={samplesOpen} onOpenChange={setSamplesOpen} onSelect={loadSample} />
+    <Comparison report={report} ledger={ledger} pending={loadingReport} error={reportError} onRetry={() => { void compare(); }} />
+    <SampleDialog open={samplesOpen} onOpenChange={setSamplesOpen} onSelect={selectSample} />
+    <Dialog open={pendingSample !== null} onOpenChange={open => { if (!open) setPendingSample(null); }}><DialogContent title="Replace this record with a sample?" description="Your current entries will be removed. Download your comparison first if you want to keep it."><div className="flex flex-wrap justify-end gap-3"><Button onClick={() => setPendingSample(null)}>Keep my record</Button><Button variant="primary" onClick={() => { if (pendingSample) loadSample(pendingSample); }}>Load sample</Button></div></DialogContent></Dialog>
   </WorkspaceShell>;
 }

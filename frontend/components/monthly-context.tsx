@@ -6,7 +6,7 @@ import { Field, Input } from './ui/input';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 
-export function MonthlyContext({ busy }: { busy: boolean }) {
+export function MonthlyContext({ busy, disabled }: { busy: boolean; disabled: boolean }) {
   const { register, control, formState: { errors } } = useFormContext<FormValues>();
   const receipts = useWatch({ control, name: 'receipts' });
   const reviewed = receipts.filter(receipt => receipt.confirmed).length;
@@ -19,7 +19,7 @@ export function MonthlyContext({ busy }: { busy: boolean }) {
         </div>
         <Field id="source" label="Source of entitlement" hint="Optional. Name the record you referred to." error={errors.entitlement_source?.message}><Input id="source" maxLength={500} aria-describedby="source-hint" {...register('entitlement_source')} /></Field>
         <div className="border-t pt-6"><Controller name="month_complete" control={control} render={({ field }) => <div className="flex items-start gap-3"><Checkbox id="month-complete" checked={field.value} onCheckedChange={checked => field.onChange(checked === true)} /><label htmlFor="month-complete" className="min-h-10 cursor-pointer text-xs leading-5">I have added all receipts for this month so far.</label></div>} /></div>
-        <div className="space-y-3"><Button id="compare" type="submit" variant="primary" loading={busy} disabled={!receipts.length} className="w-full">{busy ? 'Comparing records' : 'Compare records'}{!busy && <ArrowRight aria-hidden="true" />}</Button><p className="text-center text-xs text-muted-foreground">{receipts.length ? `${reviewed} of ${receipts.length} receipts reviewed` : 'Add a receipt to begin.'}</p></div>
+        <div className="space-y-3"><Button id="compare" type="submit" variant="primary" loading={busy} disabled={!receipts.length || disabled} className="w-full">{busy ? 'Comparing records' : 'Compare records'}{!busy && <ArrowRight aria-hidden="true" />}</Button><p className="text-center text-xs text-muted-foreground">{receipts.length ? `${reviewed} of ${receipts.length} receipts reviewed` : 'Add a receipt to begin.'}</p></div>
       </CardContent>
     </Card>
     <div className="flex items-start gap-3 px-1 py-2 text-xs text-muted-foreground"><Info className="size-4" aria-hidden="true" /><p>A balance is ration left to check or collect. It is separate from a difference between your receipt and your measured amount.</p></div>

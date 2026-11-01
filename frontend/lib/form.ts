@@ -5,7 +5,7 @@ const quantity = z.string().refine(value => value === '' || (/^\d+(\.\d{1,3})?$/
 const receiptSchema = z.object({
   document_id: z.string().min(1),
   receipt_id: z.string().trim().min(1, 'Enter the receipt number.').max(80, 'Use up to 80 characters.'),
-  date: z.string().refine(value => { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const date = new Date(`${value}T12:00:00`); return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value); }, 'Enter a valid receipt date.'),
+  date: z.string().refine(value => { if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const date = new Date(`${value}T12:00:00Z`); return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value); }, 'Enter a valid receipt date.'),
   confirmed: z.boolean(), source_text: z.string().max(20000),
   preview: z.string().nullable(), warnings: z.array(z.string()),
   items: z.array(z.object({ commodity: z.enum(['rice', 'wheat']), issued_kg: quantity, received_kg: quantity }))

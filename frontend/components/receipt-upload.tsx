@@ -31,7 +31,7 @@ export function ReceiptUpload({ pending, error, onFile, onText, onManual }: { pe
       {error && <div className="mt-4"><ErrorState message={error} onRetry={lastFile.current ? () => addFile(lastFile.current ?? undefined) : undefined} /></div>}
     </CardContent></Card>
     <Dialog open={textOpen} onOpenChange={setTextOpen}><DialogContent title="Paste receipt text" description="Copy the text from your original receipt. You will review the extracted fields next.">
-      <form onSubmit={submitText} className="space-y-6" noValidate>
+      <form onSubmit={event => { event.stopPropagation(); void submitText(event); }} className="space-y-6" noValidate>
         <Field id="receipt-text" label="Receipt text" error={form.formState.errors.text?.message}><Textarea id="receipt-text" rows={8} aria-invalid={!!form.formState.errors.text} aria-describedby={form.formState.errors.text ? 'receipt-text-error' : undefined} {...form.register('text')} /></Field>
         {error && <ErrorState message={error} />}
         <Button type="submit" variant="primary" loading={pending}><FileText aria-hidden="true" />Read receipt text</Button>
