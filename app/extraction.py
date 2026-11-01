@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import unicodedata
 import warnings
+from decimal import Decimal
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
@@ -21,27 +22,29 @@ def parse_receipt(text: str, document_id: str | None = None) -> dict:
     text = unicodedata.normalize("NFKC", text)
     # Devanagari digits can be entered in the text path, too.
     normalized = "".join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in text)
+    # Normalize signs before matching: Unicode minus must not become positive.
+    normalized = normalized.translate(str.maketrans({"−": "-", "–": "-", "—": "-"}))
     id_match = re.search(r"(?:receipt|transaction|txn)(?:\s*(?:id|no\.?|number))?\s*[:#-]\s*([\w/-]+)", normalized, re.I)
     date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", normalized)
-    found, items, issues = {}, [], []
+    found, issues = {}, []
     for line in normalized.splitlines():
-        for commodity, aliases in ALIASES.items():
-            if not re.search(rf"(?<!\w)(?:{aliases})(?!\w)", line, re.I):
-                continue
-            # A single quantity next to an explicit unit is safe to suggest.
-            # Multiple columns (entitlement/issued/balance) require human interpretation.
-            matches = re.findall(r"(?<![\w.,+-])(\d+(?:\.\d{1,3})?)\s*(kg|kgs|किलो|किग्रा|g|grams?)(?![\w\u0900-\u097f])", line, re.I)
-            if len(matches) == 1 and commodity not in found:
+        commodities = [name for name, aliases in ALIASES.items()
+                       if re.search(rf"(?<!\w)(?:{aliases})(?!\w)", line, re.I)]
+        # Allocation/balance/price lines cannot establish an issued quantity.
+        ambiguous_role = re.search(r"entitlement|allocation|balance|remaining|rate|price|पात्रता|शेष", line, re.I)
+        unsafe_number = re.search(r"[-+]\s*\d|[\d]\s*[,/]\s*[\d]|\(\s*\d", line)
+        matches = re.findall(r"(?<![\w.,+-])(\d+(?:\.\d+)?)\s*(kgs?|किलो|किग्रा|grams?|g)(?![\w\u0900-\u097f])", line, re.I)
+        for commodity in commodities:
+            qty = None
+            if len(commodities) == 1 and len(matches) == 1 and not ambiguous_role and not unsafe_number and commodity not in found:
                 number, unit = matches[0]
-                from decimal import Decimal
-                qty = Decimal(number) / (1000 if unit.lower() in ("g", "gram", "grams") else 1)
-                if qty <= 10000:
-                    found[commodity] = {"commodity": commodity, "issued_kg": str(qty),
-                                        "received_kg": None, "evidence": line}
-            else:
-                found[commodity] = {"commodity": commodity, "issued_kg": None,
-                                    "received_kg": None, "evidence": line}
-                issues.append(f"Check the {commodity} quantity against the original: multiple or missing quantity fields.")
+                candidate = Decimal(number) / (1000 if unit.lower() in ("g", "gram", "grams") else 1) if len(number) <= 18 else Decimal(10001)
+                if candidate <= 10000 and candidate == candidate.quantize(Decimal("0.001")):
+                    qty = str(candidate)
+            found[commodity] = {"commodity": commodity, "issued_kg": qty,
+                                "received_kg": None, "evidence": line}
+            if qty is None:
+                issues.append(f"Check the {commodity} quantity manually: ambiguous commodity, role, quantity, or unsupported precision.")
     items = list(found.values())
     if not items:
         issues.append("No supported commodity and quantity pair found. Add the values from the original manually.")

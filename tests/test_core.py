@@ -147,5 +147,18 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(result["items"],[])
         self.assertTrue(result["review_required"])
 
+    def test_ambiguous_or_signed_quantities_are_not_suggested(self):
+        for text in ["Rice and Wheat: 25 kg", "Rice entitlement: 25 kg", "Rice balance 5 kg",
+                     "Rice: −25 kg", "Rice: - 25 kg", "Rice: (25 kg)", "Rice: 1,200 kg",
+                     "Rice: 0.5 g", "Rice: 10001 kg", "Rice: 1.2345 kg"]:
+            with self.subTest(text=text):
+                result = parse_receipt(text)
+                self.assertTrue(result['items'])
+                self.assertTrue(all(item['issued_kg'] is None for item in result['items']))
+                self.assertTrue(result['warnings'])
+
+    def test_repeated_commodity_stays_unknown(self):
+        self.assertIsNone(parse_receipt("Rice: 5 kg\nRice: 6 kg\nRice: 7 kg")['items'][0]['issued_kg'])
+
 
 if __name__=="__main__":unittest.main()
