@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { ClipboardList } from 'lucide-react';
 import type { Extraction, Health, Ledger, Report } from '@/lib/contracts';
 import { api, errorMessage, jsonOptions } from '@/lib/api';
-import { emptyValues, FormValues, ledgerSchema, sampleValues, toFormReceipt, toLedger } from '@/lib/form';
+import { emptyValues, FormValues, type SampleKind, ledgerSchema, sampleValues, toFormReceipt, toLedger } from '@/lib/form';
 import { RequestLane } from '@/lib/requests';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { monthLabel } from '@/lib/utils';
@@ -23,7 +23,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 
 function SectionHeader({ number, title, description, count }: { number: string; title: string; description: string; count?: string | number }) {
-  return <div className="space-y-2"><div className="flex flex-wrap items-center gap-3"><p className="text-xs text-muted-foreground">{number} /</p>{count !== undefined && <Badge>{count} {Number(count) === 1 ? 'receipt' : 'receipts'}</Badge>}</div><div className="space-y-1"><h2 className="text-xl font-semibold tracking-tight" id={`${title.toLowerCase().replaceAll(' ', '-')}-heading`}>{title}</h2><p className="text-sm text-muted-foreground">{description}</p></div></div>;
+  return <div className="space-y-2"><div className="flex flex-wrap items-center gap-3"><p className="text-xs text-muted-foreground">{number} /</p>{count !== undefined && <Badge>{count} {Number(count) === 1 ? 'receipt' : 'receipts'}</Badge>}</div><div className="space-y-1"><h2 tabIndex={-1} className="text-xl font-semibold tracking-tight" id={`${title.toLowerCase().replaceAll(' ', '-')}-heading`}>{title}</h2><p className="text-sm text-muted-foreground">{description}</p></div></div>;
 }
 
 export function WorkspaceApp() {
@@ -31,6 +31,7 @@ export function WorkspaceApp() {
   const formWatch = form.watch;
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'receipts' });
   const currentMonth = form.watch('month');
+  const isDemo = form.watch('demo');
   const [health, setHealth] = useState<Health | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function WorkspaceApp() {
   const [report, setReport] = useState<Report | null>(null);
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [pendingSample, setPendingSample] = useState<'difference' | 'partial' | 'missing' | null>(null);
+  const [pendingSample, setPendingSample] = useState<SampleKind | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [samplesOpen, setSamplesOpen] = useState(false);
   const uploads = useRef(new RequestLane());
@@ -68,6 +69,7 @@ export function WorkspaceApp() {
     if (current.length >= 50) { if (preview) URL.revokeObjectURL(preview); throw new Error('A monthly record can include up to 50 receipts.'); }
     if (current.some(receipt => receipt.document_id === data.document_id)) { if (preview) URL.revokeObjectURL(preview); throw new Error('This exact receipt is already in the monthly record.'); }
     if (preview) previews.current.add(preview);
+    if (data.source_text.includes('SYNTHETIC DEMO RECEIPT')) form.setValue('demo', true);
     append(toFormReceipt(data, preview)); resetReport(); setUploadError(null);
   };
   const extract = async (path: string, options: RequestInit, file?: File): Promise<boolean> => {
@@ -107,6 +109,7 @@ export function WorkspaceApp() {
       const nextReport = await api<Report>('/api/reconcile', { ...jsonOptions(nextLedger), signal: request.signal });
       if (!comparisons.current.current(request)) return;
       setReport(nextReport); setLedger(nextLedger); toast.success('Comparison ready');
+      requestAnimationFrame(() => { document.getElementById('comparison-heading')?.focus(); });
     } catch (error) {
       if (comparisons.current.current(request)) setReportError(errorMessage(error));
     } finally {
@@ -117,7 +120,7 @@ export function WorkspaceApp() {
     resetReport(); document.querySelector<HTMLElement>('[aria-invalid=true]')?.focus(); toast.error('Review the highlighted fields.');
   });
   const onCompare = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void compare(event); };
-  const loadSample = (kind: 'difference' | 'partial' | 'missing') => {
+  const loadSample = (kind: SampleKind) => {
     cancelUploads(); resetReport(); clearPreviews();
     const values = sampleValues(kind); form.reset(values); replace(values.receipts);
     setPendingSample(null);
@@ -125,14 +128,14 @@ export function WorkspaceApp() {
     requestAnimationFrame(() => { void compareValues(form.getValues()); });
     toast.message('Synthetic sample loaded');
   };
-  const selectSample = (kind: 'difference' | 'partial' | 'missing') => {
+  const selectSample = (kind: SampleKind) => {
     if (form.getValues('receipts').length || form.formState.isDirty || uploading) setPendingSample(kind);
     else loadSample(kind);
   };
   const removeReceipt = (index: number) => { const receipt = form.getValues(`receipts.${index}`); if (receipt?.preview) { URL.revokeObjectURL(receipt.preview); previews.current.delete(receipt.preview); } remove(index); resetReport(); };
 
-  return <WorkspaceShell hasRecords={fields.length > 0} onReset={resetRecord} onSamples={() => setSamplesOpen(true)}>
-    <header className="no-print space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{health?.ocr && <Badge tone={health.ocr_runtime?.state === 'failed' ? 'warning' : 'neutral'}>{health.ocr_runtime?.state === 'ready' ? 'Last image read succeeded' : health.ocr_runtime?.state === 'failed' ? 'Image reader unavailable · use text' : 'Image reader installed · unverified'}</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
+  return <WorkspaceShell hasRecords={fields.length > 0 || uploading || form.formState.isDirty} onReset={resetRecord} onSamples={() => setSamplesOpen(true)}>
+    <header className="no-print space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{isDemo && <Badge tone="warning">Synthetic sample</Badge>}{health?.ocr && <Badge tone={health.ocr_runtime?.state === 'failed' ? 'warning' : 'neutral'}>{health.ocr_runtime?.state === 'ready' ? 'Last image read succeeded' : health.ocr_runtime?.state === 'failed' ? 'Image reader unavailable · use text' : 'Image reader installed · unverified'}</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
     <FormProvider {...form}><form noValidate onSubmit={onCompare} className="no-print grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_352px]">
       <section id="receipts" className="space-y-5" aria-labelledby="receipts-heading"><SectionHeader number="01" title="Receipts" description="Add a photo or enter the details yourself. Check every suggested field." count={fields.length} /><ReceiptUpload pending={uploading} error={uploadError} onFile={onFile} onText={onText} onManual={onManual} />
         {fields.length === 0 ? <Card><CardContent><EmptyState icon={ClipboardList} title="No receipts in this record" description="Add a receipt above, or enter its details manually. You can also try a synthetic sample case." action={<Button variant="ghost" size="small" onClick={() => setSamplesOpen(true)}>View sample cases</Button>} /></CardContent></Card> : <div className="space-y-4" aria-label="Receipts for this month">{fields.map((field, index) => <motion.div key={field.id} initial={reduced ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}><ReceiptEditor index={index} onRemove={() => removeReceipt(index)} /></motion.div>)}</div>}

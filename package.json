@@ -8,7 +8,8 @@
     "lint": "eslint frontend",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "test": "node --test scripts/frontend-tests.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "react": "18.3.1",

@@ -1,0 +1,9 @@
+RATIONPROOF / TEST FIXTURE
+SYNTHETIC DEMO RECEIPT
+Not a real ration transaction
+Receipt ID: DEMO-001
+Date: 2026-11-03
+Rice: 25 kg
+Received quantity is not known.
+Enter your measurement separately.
+No actual person or shop is named.

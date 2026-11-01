@@ -41,3 +41,11 @@ test('comparison sends only API fields, never preview URLs or parser warnings', 
   assert.equal('warnings' in payload.receipts[0],false);
   assert.equal(payload.demo,true);
 });
+test('every demo is schema-valid, synthetic, and has distinct receipt identifiers', () => {
+  for (const kind of ['cancellation','difference','partial','missing']) {
+    const values=ledgerSchema.parse(sampleValues(kind));
+    assert.equal(values.demo,true);
+    assert.equal(new Set(values.receipts.map(receipt=>receipt.document_id)).size,values.receipts.length);
+    assert.ok(values.receipts.every(receipt=>receipt.source_text.includes('SYNTHETIC DEMO')));
+  }
+});

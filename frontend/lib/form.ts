@@ -37,7 +37,16 @@ export function toLedger(values: FormValues): Ledger {
     })),
   };
 }
-export function sampleValues(kind: 'difference' | 'partial' | 'missing'): FormValues {
+export type SampleKind = 'cancellation' | 'difference' | 'partial' | 'missing';
+export function sampleValues(kind: SampleKind): FormValues {
+  if (kind === 'cancellation') return {
+    month: '2026-11', rice: '20', wheat: '0', entitlement_source: 'Synthetic example entitlement — not an official record', month_complete: true, demo: true,
+    receipts: ['5', '15'].map((received, index) => ({
+      document_id: `demo-cancellation-${index}`, receipt_id: `DEMO-00${index + 1}`, date: `2026-11-0${index + 3}`, confirmed: true, preview: null, warnings: [],
+      source_text: `SYNTHETIC DEMO RECEIPT\nReceipt ID: DEMO-00${index + 1}\nDate: 2026-11-0${index + 3}\nRice: 10 kg\nNot an official receipt.`,
+      items: [{ commodity: 'rice', issued_kg: '10', received_kg: received }],
+    })),
+  };
   const issued = kind === 'partial' ? '15' : '25';
   return { month: '2026-11', rice: '25', wheat: '0', entitlement_source: 'Synthetic example entitlement — not an official record', month_complete: true, demo: true,
     receipts: [{ document_id: `demo-${kind}`, receipt_id: 'DEMO-001', date: '2026-11-03', confirmed: true, preview: null, warnings: [],

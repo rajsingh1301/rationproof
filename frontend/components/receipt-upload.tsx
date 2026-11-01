@@ -28,6 +28,7 @@ export function ReceiptUpload({ pending, error, onFile, onText, onManual }: { pe
       </div>}
       <input ref={input} id="file" className="sr-only" type="file" tabIndex={-1} aria-label="Receipt file" accept="image/png,image/jpeg,image/webp,.txt" disabled={pending} onChange={event => { addFile(event.target.files?.[0]); event.target.value = ''; }} />
       <div className="mt-4 flex flex-wrap items-center gap-2"><Button variant="ghost" size="small" disabled={pending} onClick={() => setTextOpen(true)}><TextCursorInput aria-hidden="true" />Paste text</Button><Button id="add-manual" variant="ghost" size="small" disabled={pending} onClick={onManual}><Plus aria-hidden="true" />Enter manually</Button><span className="ml-auto text-xs text-muted-foreground">Files stay on this device.</span></div>
+      <p className="mt-3 text-xs text-muted-foreground">Try a labelled sample: <a className="inline-flex min-h-10 items-center px-2 text-accent underline underline-offset-4" href="/static/demo-receipt.txt" download>Receipt text</a><a className="inline-flex min-h-10 items-center px-2 text-accent underline underline-offset-4" href="/static/demo-receipt.png" download>Receipt image</a></p>
       {error && <div className="mt-4"><ErrorState message={error} onRetry={lastFile.current ? () => addFile(lastFile.current ?? undefined) : undefined} /></div>}
     </CardContent></Card>
     <Dialog open={textOpen} onOpenChange={setTextOpen}><DialogContent title="Paste receipt text" description="Copy the text from your original receipt. You will review the extracted fields next.">

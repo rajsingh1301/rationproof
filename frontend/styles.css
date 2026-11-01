@@ -78,7 +78,8 @@
 }
 @media print {
   .no-print { display: none !important; }
-  body, .dark { background: white; color: black; --surface: white; --foreground: #18181b; --muted-foreground: #52525b; --border: #d4d4d8; --muted: #f4f4f5; }
+  body, .dark { background: white; color: black; --surface: white; --foreground: #18181b; --muted-foreground: #52525b; --border: #d4d4d8; --muted: #f4f4f5; --warning: #744809; --warning-soft: #fff9ed; --success: #21643e; --success-soft: #edf8f1; color-scheme: light; }
+  [data-sonner-toaster], [data-vaul-drawer], [role=dialog], .fixed { display: none !important; }
   .print-content { margin: 0 !important; padding: 0 !important; max-width: none !important; }
   #comparison { border: 0; }
   #comparison details > * { display: block !important; }
