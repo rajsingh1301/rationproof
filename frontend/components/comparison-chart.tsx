@@ -1,0 +1,7 @@
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Legend } from 'recharts';
+import type { ReportRow } from '@/lib/contracts';
+
+export default function ComparisonChart({ rows }: { rows: ReportRow[] }) {
+  const data = rows.filter(row => row.issued_kg !== null && row.received_kg !== null).map(row => ({ name: row.commodity === 'rice' ? 'Rice' : 'Wheat', recorded: Number(row.issued_kg), received: Number(row.received_kg) }));
+  return <div className="space-y-4"><p className="text-xs text-muted-foreground">Kilograms recorded on receipts and reported as received. Only complete quantities are shown.</p><div className="h-64 w-full" role="img" aria-label="Bar chart of recorded and user-reported kilograms. Exact values are in the comparison table."><ResponsiveContainer width="100%" height="100%"><BarChart data={data} accessibilityLayer margin={{ top: 8, right: 8, bottom: 8, left: 0 }}><CartesianGrid vertical={false} stroke="var(--border)" /><XAxis dataKey="name" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} axisLine={false} tickLine={false} /><YAxis width={40} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} axisLine={false} tickLine={false} /><Legend iconType="square" /><Bar dataKey="recorded" name="Recorded" fill="var(--accent)" radius={8} isAnimationActive={false} /><Bar dataKey="received" name="User reported" fill="var(--zinc-500)" radius={8} isAnimationActive={false} /></BarChart></ResponsiveContainer></div></div>;
+}

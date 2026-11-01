@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.cache/
+artifacts/
+uploads/
+*.log
+node_modules/
+static/assets/
