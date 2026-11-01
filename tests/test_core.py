@@ -68,6 +68,17 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(report["status"],"incomplete")
         self.assertEqual(report["issues"][0]["kind"],"conflicting_duplicate")
 
+    def test_reordered_commodity_lines_are_same_transaction(self):
+        data = sample()
+        data['receipts'][0]['items'].append({'commodity': 'wheat', 'issued_kg': '5', 'received_kg': '5'})
+        other = copy.deepcopy(data['receipts'][0])
+        other['document_id'] = 'another-photo'
+        other['items'].reverse()
+        data['receipts'].append(other)
+        report = self.report(data)
+        self.assertEqual(report['accepted_receipts'], 1)
+        self.assertEqual(report['issues'][0]['kind'], 'duplicate')
+
     def test_opposite_differences_do_not_cancel_alert(self):
         data=sample("10","5");other=copy.deepcopy(data["receipts"][0])
         other.update(document_id="doc-2",receipt_id="DEMO-2")

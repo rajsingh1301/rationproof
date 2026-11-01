@@ -50,7 +50,7 @@ def reconcile(ledger: Ledger) -> dict:
     incomplete = False
     for receipt in ledger.receipts:
         transaction = (receipt.receipt_id.casefold(), receipt.date.isoformat())
-        signature = [(i.commodity, i.issued_kg, i.received_kg) for i in receipt.items]
+        signature = sorted((i.commodity, i.issued_kg, i.received_kg) for i in receipt.items)
         previous = documents.get(receipt.document_id) or transactions.get(transaction)
         if previous is not None:
             same = previous == (transaction, signature)
