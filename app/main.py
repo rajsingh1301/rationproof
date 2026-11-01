@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import secrets
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from starlette.concurrency import run_in_threadpool
@@ -18,6 +19,9 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 @app.middleware("http")
 async def local_headers(request, call_next):
+    request.state.csp_nonce = secrets.token_urlsafe(24)
+    if request.url.path == '/static/index.html':
+        return RedirectResponse('/')
     if request.method == "POST":
         origin = request.headers.get("origin")
         allowed = {"http://127.0.0.1:8765", "http://localhost:8765"}
@@ -32,13 +36,15 @@ async def local_headers(request, call_next):
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' blob:; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+    nonce = request.state.csp_nonce
+    response.headers["Content-Security-Policy"] = f"default-src 'self'; img-src 'self' blob:; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'nonce-{nonce}'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"
     return response
 
 
 @app.get("/")
-def index():
-    return FileResponse(ROOT / "static" / "index.html")
+def index(request: Request):
+    html = (ROOT / 'static' / 'index.html').read_text().replace('__RATIONPROOF_NONCE__', request.state.csp_nonce)
+    return HTMLResponse(html)
 
 
 @app.get("/api/health")

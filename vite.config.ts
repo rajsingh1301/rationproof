@@ -2,9 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
+import { nonceStyles } from './scripts/csp-plugin';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [nonceStyles(), react(), tailwindcss()],
+  html: { cspNonce: '__RATIONPROOF_NONCE__' },
+  optimizeDeps: { exclude: ['sonner', 'vaul'] },
   resolve: { alias: { '@': fileURLToPath(new URL('./frontend', import.meta.url)) } },
   base: '/static/',
   publicDir: false,
@@ -16,7 +19,6 @@ export default defineConfig({
     outDir: 'static', emptyOutDir: false, assetsDir: 'assets',
     rollupOptions: { output: { manualChunks(id) {
       if (!id.includes('node_modules')) return;
-      if (/\/node_modules\/(recharts|d3-)/.test(id)) return 'chart';
       if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react-vendor';
       if (/\/node_modules\/(framer-motion|motion-dom|motion-utils)\//.test(id)) return 'motion-vendor';
       if (/\/node_modules\/@radix-ui\//.test(id)) return 'radix-vendor';
