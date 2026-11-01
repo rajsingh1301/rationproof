@@ -10,7 +10,7 @@ from pydantic import Field
 from starlette.concurrency import run_in_threadpool
 
 from .domain import Ledger, StrictModel, reconcile
-from .extraction import extract_image, ocr_backend, parse_receipt
+from .extraction import extract_image, ocr_backend, ocr_runtime, parse_receipt
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="RationProof", version="0.1.0", docs_url="/api/docs")
@@ -49,7 +49,7 @@ def index(request: Request):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "ocr": ocr_backend(), "storage": "ephemeral", "version": "0.1.0"}
+    return {"status": "ok", "ocr": ocr_backend(), "ocr_runtime": ocr_runtime(), "storage": "ephemeral", "version": "0.2.0"}
 
 
 class TextInput(StrictModel):

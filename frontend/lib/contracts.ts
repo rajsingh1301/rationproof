@@ -21,4 +21,4 @@ export interface Report {
   entitlement_source: string; rows: ReportRow[];
   issues: { kind: string; receipt_id: string; message: string }[]; note: string; created_at: string;
 }
-export interface Health { status: string; ocr: string | null; storage: string; version: string }
+export interface Health { status: string; ocr: string | null; ocr_runtime?: { state: string; last_engine: string | null }; storage: string; version: string }

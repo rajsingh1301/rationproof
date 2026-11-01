@@ -16,6 +16,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 ROOT = Path(__file__).resolve().parent.parent
 Image.MAX_IMAGE_PIXELS = 16_000_000
 ALIASES = {"rice": r"rice|chawal|चावल", "wheat": r"wheat|gehun|गेहूं|गेहूँ"}
+_runtime = {"state": "unverified", "last_engine": None}
 
 
 def parse_receipt(text: str, document_id: str | None = None) -> dict:
@@ -58,12 +59,21 @@ def parse_receipt(text: str, document_id: str | None = None) -> dict:
             "confirmed": False, "review_required": True}
 
 
-def ocr_backend() -> str | None:
+def ocr_backends() -> list[str]:
+    engines = []
     if (ROOT / ".cache" / "vision-ocr").is_file():
-        return "apple_vision"
+        engines.append("apple_vision")
     if shutil.which("tesseract"):
-        return "tesseract"
-    return None
+        engines.append("tesseract")
+    return engines
+
+
+def ocr_backend() -> str | None:
+    return next(iter(ocr_backends()), None)
+
+
+def ocr_runtime() -> dict:
+    return dict(_runtime) if ocr_backend() else {"state": "not_installed", "last_engine": None}
 
 
 def extract_image(content: bytes) -> dict:
@@ -78,22 +88,28 @@ def extract_image(content: bytes) -> dict:
                 image.thumbnail((3000, 3000))
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise ValueError("This image cannot be read or is too large. Use an image below 16 megapixels.") from exc
-    backend = ocr_backend()
-    if not backend:
+    engines = ocr_backends()
+    if not engines:
         raise RuntimeError("Image reading is not installed yet. Use the text or manual entry option; see README for local OCR setup.")
     with tempfile.TemporaryDirectory(prefix="rationproof-") as directory:
         path = Path(directory) / "receipt.png"
         image.save(path)
-        command = [str(ROOT / ".cache" / "vision-ocr"), str(path)] if backend == "apple_vision" else ["tesseract", str(path), "stdout", "-l", "eng", "--psm", "6"]
-        try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=True)
-            if backend == "apple_vision":
-                blocks = json.loads(result.stdout)["lines"]
-                text = "\n".join(block["text"] for block in blocks)
-            else:
-                text, blocks = result.stdout, []
-        except (subprocess.SubprocessError, ValueError, KeyError) as exc:
-            raise RuntimeError("The local image reader could not run or read this image. Use pasted text or manual entry; image reading may need setup on your device.") from exc
+        for backend in engines:
+            command = [str(ROOT / ".cache" / "vision-ocr"), str(path)] if backend == "apple_vision" else ["tesseract", str(path), "stdout", "-l", "eng", "--psm", "6"]
+            try:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=True)
+                if backend == "apple_vision":
+                    blocks = json.loads(result.stdout)["lines"]
+                    text = "\n".join(block["text"] for block in blocks)
+                else:
+                    text, blocks = result.stdout, []
+                _runtime.update(state="ready", last_engine=backend)
+                break
+            except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
+                continue
+        else:
+            _runtime.update(state="failed", last_engine=None)
+            raise RuntimeError("The installed image readers could not run on this device. Paste the receipt text or enter it manually. Run the OCR check in README to diagnose the reader.")
     extracted = parse_receipt(text, hashlib.sha256(content).hexdigest())
     extracted.update({"engine": backend, "blocks": blocks})
     if not text.strip():

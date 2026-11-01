@@ -83,7 +83,7 @@ export function WorkspaceApp() {
       if (uploads.current.current(request)) setUploadError(errorMessage(error));
       return false;
     } finally {
-      if (uploads.current.current(request)) { uploads.current.finish(request); setUploading(false); }
+      if (uploads.current.current(request)) { uploads.current.finish(request); setUploading(false); void checkHealth(); }
     }
   };
   const onFile = (file: File) => {
@@ -132,7 +132,7 @@ export function WorkspaceApp() {
   const removeReceipt = (index: number) => { const receipt = form.getValues(`receipts.${index}`); if (receipt?.preview) { URL.revokeObjectURL(receipt.preview); previews.current.delete(receipt.preview); } remove(index); resetReport(); };
 
   return <WorkspaceShell hasRecords={fields.length > 0} onReset={resetRecord} onSamples={() => setSamplesOpen(true)}>
-    <header className="no-print space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{health?.ocr && <Badge tone="success">Local image reader installed</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
+    <header className="no-print space-y-4 border-b pb-8"><div className="flex flex-wrap items-center gap-3"><Badge>Monthly record</Badge>{health?.ocr && <Badge tone={health.ocr_runtime?.state === 'failed' ? 'warning' : 'neutral'}>{health.ocr_runtime?.state === 'ready' ? 'Last image read succeeded' : health.ocr_runtime?.state === 'failed' ? 'Image reader unavailable · use text' : 'Image reader installed · unverified'}</Badge>}{health && <Badge>On this device</Badge>}</div><div className="space-y-3"><h1 className="text-2xl font-semibold tracking-tight sm:text-2xl">{monthLabel(currentMonth)}</h1><p className="max-w-2xl text-sm text-muted-foreground">Compare your entitlement, what each receipt records, and what you measured receiving.</p></div>{healthError && <ErrorState message={healthError} onRetry={() => { void checkHealth(); }} />}</header>
     <FormProvider {...form}><form noValidate onSubmit={onCompare} className="no-print grid min-w-0 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_352px]">
       <section id="receipts" className="space-y-5" aria-labelledby="receipts-heading"><SectionHeader number="01" title="Receipts" description="Add a photo or enter the details yourself. Check every suggested field." count={fields.length} /><ReceiptUpload pending={uploading} error={uploadError} onFile={onFile} onText={onText} onManual={onManual} />
         {fields.length === 0 ? <Card><CardContent><EmptyState icon={ClipboardList} title="No receipts in this record" description="Add a receipt above, or enter its details manually. You can also try a synthetic sample case." action={<Button variant="ghost" size="small" onClick={() => setSamplesOpen(true)}>View sample cases</Button>} /></CardContent></Card> : <div className="space-y-4" aria-label="Receipts for this month">{fields.map((field, index) => <motion.div key={field.id} initial={reduced ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}><ReceiptEditor index={index} onRemove={() => removeReceipt(index)} /></motion.div>)}</div>}
