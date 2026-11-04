@@ -4,7 +4,7 @@ Phase 1 reviewed the existing code and ran baseline checks before fixes. The use
 
 **Project:** local ration receipt / entitlement / measured collection comparison.
 **Event:** Neural Storm, proposed Human Impact custom problem. Published criteria/eligibility must be confirmed with the organizer; there is no private judging rubric in this repository.
-**Stack:** Python/FastAPI/Pydantic/Pillow, local Swift Vision adapter or Tesseract; React/TypeScript/Vite/Tailwind/Radix.
+**Stack:** Python/FastAPI/Pydantic/Pillow, Apple Vision via PyObjC (local Swift adapter until 4 November) or Tesseract; React/TypeScript/Vite/Tailwind/Radix.
 **Timing:** work dated 1 November, before the recorded 2 November 20:00 IST start and 4 November 20:00 IST deadline. Do not represent this as eligible event-period work.
 
 ## Product/code inventory
@@ -30,8 +30,8 @@ Estimates are engineering ranges, not promises. External runtime/access and orga
 
 | Priority | Finding and demo consequence | Estimate | Current disposition |
 | --- | --- | --- | --- |
-| Critical | Actual synthetic image OCR returns 503; the central image AI path cannot be claimed working. | 2–4 hours on an unrestricted demo device; longer if replacing engine | **Open.** Added truthful runtime status, real diagnostic, and tested fallback to an installed second engine. Vision still fails here; Tesseract absent. |
-| Critical | Pre-event work and Swift bridge may conflict with eligibility/Python AI requirements. | 20–30 min to document; organizer response unknown | Provenance preserved in README/log/pitch. **Organizer decision still needed.** No external message sent. |
+| Critical | Actual synthetic image OCR returns 503; the central image AI path cannot be claimed working. | 2–4 hours on an unrestricted demo device; longer if replacing engine | **Open.** Added truthful runtime status, real diagnostic, and tested fallback to an installed second engine. Vision still fails here; Tesseract absent. **4 Nov: resolved on the author's Mac.** Real Vision OCR passes `doctor.py --ocr` and the browser upload flow on the synthetic fixture. Real-receipt accuracy is unmeasured. |
+| Critical | Pre-event work and Swift bridge may conflict with eligibility/Python AI requirements. | 20–30 min to document; organizer response unknown | Provenance preserved in README/log/pitch. **Organizer decision still needed** for pre-event work. **4 Nov: Swift bridge removed.** OCR is now called from Python via PyObjC. No external message sent. |
 | High | Ambiguous commodity/entitlement lines and Unicode signs can suggest wrong positive quantities. | 1–2 hours | Fixed: abstain on shared labels, roles, signs, repeated lines, unsafe precision/ranges; regression tests and synthetic evaluation added. |
 | High | Upload/comparison responses can arrive after reset or edits and restore stale data; input edits can clear a shared busy flag. | 2–3 hours | Separate cancellable request lanes, stale response guards and timeouts. Six initial client regression tests added. Full browser concurrency verification remains pending. |
 | High | Samples overwrite a user's record immediately. | 30–45 min | Replacement dialog preserves existing entries until confirmed; reset cancels pending work and releases previews. |

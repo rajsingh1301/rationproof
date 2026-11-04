@@ -4,7 +4,7 @@
 
 1. From a normal Terminal run `bash scripts/run.sh`; keep the window open. Run `scripts/doctor.py` and the browser smoke test beforehand.
 2. Use a clean browser tab at `http://127.0.0.1:8765`. Confirm the UI renders and Sample cases loads a report through the server.
-3. Only demonstrate image recognition if `.venv/bin/python scripts/doctor.py --ocr` succeeds on that device. Image OCR currently fails in the managed development environment.
+3. Only demonstrate image recognition if `.venv/bin/python scripts/doctor.py --ocr` succeeds on that device. It passed on the author's Mac on 4 November (Apple Vision via PyObjC, synthetic fixture).
 4. Use the labelled synthetic fixtures only. Do not insert a real household's identifiers into a public recording.
 
 ## 0:00–0:25 — problem

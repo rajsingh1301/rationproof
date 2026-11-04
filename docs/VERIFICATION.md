@@ -1,4 +1,19 @@
-# Verification record — 1 November 2026
+# Verification record
+
+## 4 November 2026 (author's Mac, macOS 26.5.2, normal Terminal)
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **46 tests pass**. New: Apple Vision runs via `python -m app.vision_ocr` (no compiled binary), reading-order sort, off-macOS detection, and receipt IDs that must not be read across lines or from separator-only text.
+- `npm run check`: lint, typecheck, 7 frontend tests and build pass.
+- `bash scripts/setup.sh`: completes; the PyObjC packages are pinned at 12.2.2.
+- `.venv/bin/python scripts/doctor.py --ocr`: **passes**. Real Apple Vision OCR via PyObjC on `static/demo-receipt.png` suggests `DEMO-001`, `2026-11-03` and rice 25 kg. Text output is identical to the old Swift adapter's on this fixture.
+- `bash scripts/run.sh`: the server binds `127.0.0.1:8765` and serves the page.
+- `RATIONPROOF_CHECK_OCR=1 node scripts/browser_check.cjs` (Playwright 1.63.0 + Chromium): **passes**, including the real image upload flow. On its first real run it found two bugs, both fixed:
+  - After a failed Compare, the error under a corrected quantity stayed until blur. When focus left the field, the error disappeared and the "I checked this receipt" checkbox moved up 48 px, so the first click missed. Form validation mode changed from `onBlur` to `onTouched`, so errors clear while typing.
+  - Zod probed `new Function("")`, which the strict CSP reported as a violation. Zod now runs in `jitless` mode via `frontend/lib/zod.ts`.
+- Screenshot review found a parser bug. On the image path the receipt ID was `----------`, because the label regex matched "SYNTHETIC DEMO RECEIPT" and then a dashed separator on the next line. The label and value must now be on the same line, and the ID must contain a letter or digit. The synthetic evaluation is unchanged: 22/22 cases, 0 unsafe suggestions.
+- Still not established: OCR accuracy on real receipts, Hindi image OCR, a by-eye review of print output and every mobile width, and real-world impact.
+
+## 1 November 2026 (managed environment)
 
 ## Passed
 

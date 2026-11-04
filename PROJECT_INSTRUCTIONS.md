@@ -13,7 +13,7 @@ Working pitch: **Aapke ration ka saaf hisaab — jo milna tha, jo receipt mein h
 - Proposed track: **Human Impact**, with a custom problem. The published Devpost rules permit a specific problem within a track. Acceptance of this exact idea has not been confirmed by organizers.
 - The previously researched build/submission window is **2 November 2026, 20:00 IST to 4 November 2026, 20:00 IST**. Registration closes 2 November at 20:00 IST.
 - **This repository's initial implementation was started on 1 November, before that window, at the user's request.** Preserve that history. Do not represent this code as created entirely during the event, backdate commits, or claim eligibility without checking organizers' treatment of pre-event work. Record actual new contributions made during the event separately in `DEVELOPMENT_LOG.md`.
-- Python is required for AI/ML components. This prototype uses Python to orchestrate local OCR, parse and validate fields, and compute the report; on macOS a small Swift adapter invokes Apple's pretrained Vision OCR. Whether this adapter meets organizers' interpretation should be checked before submission. A Python-native OCR integration can replace it without changing the report engine.
+- Python is required for AI/ML components. This prototype uses Python to orchestrate local OCR, parse and validate fields, and compute the report; on macOS it calls Apple's pretrained Vision OCR from Python through PyObjC. (Until 4 November a small Swift adapter did this; it was replaced so the AI/ML path is Python end to end, with no change to the report engine.)
 - Public GitHub source, README, screenshots/GIF and meaningful results are required by the listing. AI coding tools must be disclosed. Live demo is recommended. One submission per team; team size 1–3.
 - Devpost and Unstop both list the event. Do not assume both submissions are required. Resolve the route through the registered platform's instructions. Results dates differ between sources (7 versus 9 November).
 - Novelty is **not proven**. The proposed contribution is receipt-level comparison, duplicate handling, incomplete evidence handling, and understandable export for the household. Mera Ration and Anna Sahayata already provide adjacent services. Do not claim “world first”.
@@ -48,7 +48,7 @@ Working pitch: **Aapke ration ka saaf hisaab — jo milna tha, jo receipt mein h
 - `app/domain.py`: validated inputs and deterministic decimal arithmetic.
 - `app/extraction.py`: local OCR adapter and conservative field suggestions.
 - `app/main.py`: FastAPI routes and local web serving.
-- `scripts/vision_ocr.swift`: macOS pretrained OCR adapter; build output ignored under `.cache/`.
+- `app/vision_ocr.py`: macOS pretrained OCR (Apple Vision) called from Python via PyObjC. Replaced the Swift adapter on 4 November.
 - `static/`: the compiled browser app and sample receipt served by FastAPI.
 - `frontend/`: TypeScript + React redesign, Tailwind design tokens, reusable Radix/shadcn-style primitives, forms and report components. `npm run build` emits the app under `static/` for FastAPI to serve.
 - `tests/`: domain, extraction and HTTP regression tests using Python unittest.

@@ -52,3 +52,19 @@ Remaining verification:
 - Existing dependency versions were checked. A fresh network-backed setup and real beneficiary pilot have not been completed.
 
 The GitHub origin is configured. New work is being recorded as separate logical local commits; publication status is reported separately, not assumed from the presence of a remote.
+
+## 2026-11-04 — Python OCR, first real browser run, fixes (23:15–23:59 IST)
+
+Timing: these changes were made after the recorded 20:00 IST build-window end. The user checked the listing and reported that Neural Storm was still open. The organizer's rules govern whether they count.
+
+AI assistance: Claude Code (Anthropic), at the user's request.
+
+- **Swift → Python OCR.** Added `app/vision_ocr.py`, which calls Apple Vision's pretrained text recognizer from Python via PyObjC (pinned 12.2.2, macOS-only markers). It runs as `python -m app.vision_ocr` in a subprocess with the existing 30 s timeout and fallback chain. Removed `scripts/vision_ocr.swift` and its compile step in setup. On the fixture, its text output is identical to the Swift adapter's.
+- **OCR verified on the author's Mac.** `doctor.py --ocr` passes. The earlier HTTP 503 came from the managed environment, not this device.
+- **First real browser run** (`scripts/browser_check.cjs`, Playwright 1.63.0). It found and confirmed two pre-existing bugs:
+  - After a failed Compare, the error under a corrected field stayed until blur. Its removal moved the review checkbox 48 px during the click, so the first click missed. Fixed with form `mode: 'onTouched'`.
+  - Zod's `new Function` probe triggered a CSP violation. Fixed with `z.config({ jitless: true })` in `frontend/lib/zod.ts`.
+- **Receipt ID parser fix.** On the image path, "SYNTHETIC DEMO RECEIPT" plus a dashed line below produced the ID `----------`. Labels must now share a line with their value, and the ID must contain a letter or digit. Two regression tests were added. `doctor.py --ocr` and the browser OCR check now also assert the ID.
+- **Results:** 46 Python tests, 7 frontend tests, lint, typecheck and build pass. Synthetic evaluation unchanged at 22/22 and 0 unsafe. The full browser suite passes, including real image OCR. Curated screenshots are in `docs/screenshots/` (synthetic data, labelled in the UI).
+
+Still open: OCR accuracy on real receipts, Hindi image OCR, a by-eye review of print and mobile widths, the organizer's decision on pre-event work, and any user validation.
