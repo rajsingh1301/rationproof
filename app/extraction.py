@@ -6,12 +6,15 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unicodedata
 import warnings
 from decimal import Decimal
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+from . import vision_ocr
 
 ROOT = Path(__file__).resolve().parent.parent
 Image.MAX_IMAGE_PIXELS = 16_000_000
@@ -25,7 +28,9 @@ def parse_receipt(text: str, document_id: str | None = None) -> dict:
     normalized = "".join(str(unicodedata.digit(c)) if c.isdecimal() else c for c in text)
     # Normalize signs before matching: Unicode minus must not become positive.
     normalized = normalized.translate(str.maketrans({"−": "-", "–": "-", "—": "-"}))
-    id_match = re.search(r"(?:receipt|transaction|txn)(?:\s*(?:id|no\.?|number))?\s*[:#-]\s*([\w/-]+)", normalized, re.I)
+    # Label and value must share a line ([ \t], not \s): OCR headings such as
+    # "... RECEIPT" followed by a "-----" separator must not yield an ID.
+    id_match = re.search(r"(?:receipt|transaction|txn)(?:[ \t]*(?:id|no\.?|number))?[ \t]*[:#-][ \t]*([\w/-]*[A-Za-z0-9][\w/-]*)", normalized, re.I)
     date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", normalized)
     found, issues = {}, []
     for line in normalized.splitlines():
@@ -61,7 +66,7 @@ def parse_receipt(text: str, document_id: str | None = None) -> dict:
 
 def ocr_backends() -> list[str]:
     engines = []
-    if (ROOT / ".cache" / "vision-ocr").is_file():
+    if vision_ocr.available():
         engines.append("apple_vision")
     if shutil.which("tesseract"):
         engines.append("tesseract")
@@ -95,9 +100,12 @@ def extract_image(content: bytes) -> dict:
         path = Path(directory) / "receipt.png"
         image.save(path)
         for backend in engines:
-            command = [str(ROOT / ".cache" / "vision-ocr"), str(path)] if backend == "apple_vision" else ["tesseract", str(path), "stdout", "-l", "eng", "--psm", "6"]
+            if backend == "apple_vision":
+                command = [sys.executable, "-m", "app.vision_ocr", str(path)]
+            else:
+                command = ["tesseract", str(path), "stdout", "-l", "eng", "--psm", "6"]
             try:
-                result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=True)
+                result = subprocess.run(command, capture_output=True, text=True, timeout=30, check=True, cwd=ROOT)
                 if backend == "apple_vision":
                     blocks = json.loads(result.stdout)["lines"]
                     text = "\n".join(block["text"] for block in blocks)

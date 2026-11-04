@@ -4,3 +4,8 @@ pydantic==2.13.4
 pillow==12.2.0
 python-multipart==0.0.32
 httpx==0.28.1
+pyobjc-core==12.2.2; sys_platform == "darwin"
+pyobjc-framework-Cocoa==12.2.2; sys_platform == "darwin"
+pyobjc-framework-CoreML==12.2.2; sys_platform == "darwin"
+pyobjc-framework-Quartz==12.2.2; sys_platform == "darwin"
+pyobjc-framework-Vision==12.2.2; sys_platform == "darwin"

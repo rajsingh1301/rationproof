@@ -18,7 +18,10 @@ def main():
     for requirement in (ROOT / 'requirements.txt').read_text().splitlines():
         if not requirement.strip() or requirement.startswith('#'):
             continue
-        name, expected = requirement.split('==')
+        requirement, _, marker = requirement.partition(';')
+        if 'sys_platform == "darwin"' in marker and sys.platform != 'darwin':
+            continue
+        name, expected = requirement.strip().split('==')
         try:
             installed = version(name)
         except PackageNotFoundError:
@@ -57,6 +60,9 @@ def main():
             print(f'FAIL: actual image OCR returned HTTP {result.status_code}: {result.json()["detail"]}')
             return 1
         items = result.json()['items']
+        if result.json()['receipt_id'] != 'DEMO-001' or result.json()['date'] != '2026-11-03':
+            print(f'FAIL: image read did not suggest receipt DEMO-001 dated 2026-11-03 (got {result.json()["receipt_id"]!r}, {result.json()["date"]!r}).')
+            return 1
         if not any(item['commodity'] == 'rice' and item['issued_kg'] == '25' for item in items):
             print('FAIL: image read completed but did not suggest the expected 25 kg rice field. Review OCR output locally.')
             return 1

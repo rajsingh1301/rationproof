@@ -117,6 +117,7 @@ const origin = 'http://127.0.0.1:8765';
     if (process.env.RATIONPROOF_CHECK_OCR === '1') {
       await page.locator('#file').setInputFiles(path.join(root, 'static', 'demo-receipt.png'));
       await page.locator('#rid-0').waitFor({ timeout: 65000 });
+      assert.equal(await page.locator('#rid-0').inputValue(), 'DEMO-001');
       assert.equal(await page.locator('#issued-0-0').inputValue(), '25');
       console.log('Actual synthetic image OCR flow passed. This is not a real receipt accuracy evaluation.');
     }

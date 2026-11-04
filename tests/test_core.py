@@ -153,6 +153,18 @@ class ExtractionTests(unittest.TestCase):
         result=parse_receipt("Rice: -25 kg")
         self.assertIsNone(result["items"][0]["issued_kg"])
 
+    def test_receipt_id_label_does_not_read_across_lines(self):
+        # Apple Vision output for static/demo-receipt.png: a heading ends in "RECEIPT"
+        # and the next line is a dashed separator, which must not become the ID.
+        text = ("SYNTHETIC DEMO RECEIPT\nNot a real ration transaction\n-----------.\n"
+                "Receipt ID: DEMO-001\nDate: 2026-11-03\nRice: 25 kg")
+        self.assertEqual(parse_receipt(text)["receipt_id"], "DEMO-001")
+
+    def test_separator_only_is_not_a_receipt_id(self):
+        result = parse_receipt("Receipt No: ----\nRice: 25 kg")
+        self.assertEqual(result["receipt_id"], "")
+        self.assertTrue(any("number" in w.lower() or "id" in w.lower() for w in result["warnings"]))
+
     def test_empty_receipt_abstains(self):
         result=parse_receipt("unclear scan")
         self.assertEqual(result["items"],[])

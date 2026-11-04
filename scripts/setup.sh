@@ -13,12 +13,6 @@ fi
 if ! .venv/bin/python scripts/doctor.py --dependencies-only >/dev/null 2>&1; then
   .venv/bin/python -m pip install -r requirements.txt
 fi
-if [ "$(uname -s)" = Darwin ] && command -v swiftc >/dev/null 2>&1; then
-  mkdir -p .cache/swift
-  if ! swiftc -module-cache-path .cache/swift scripts/vision_ocr.swift -o .cache/vision-ocr; then
-    printf 'Optional Apple Vision adapter did not compile. Text/manual entry remains available.\n' >&2
-  fi
-fi
 npm ci --no-audit --no-fund
 npm run build
 .venv/bin/python scripts/doctor.py
