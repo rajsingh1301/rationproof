@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Upload, TextCursorInput, Plus, FileText } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { z } from '@/lib/zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';

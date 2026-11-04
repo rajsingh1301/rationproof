@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/lib/zod';
 import type { Extraction, Ledger } from './contracts';
 
 const quantity = z.string().refine(value => value === '' || (/^\d+(\.\d{1,3})?$/.test(value) && Number(value) <= 10000), 'Use 0–10,000 kg with up to 3 decimal places.');

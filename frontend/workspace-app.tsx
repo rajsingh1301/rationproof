@@ -27,7 +27,7 @@ function SectionHeader({ number, title, description, count }: { number: string; 
 }
 
 export function WorkspaceApp() {
-  const form = useForm<FormValues>({ resolver: zodResolver(ledgerSchema), defaultValues: emptyValues(), mode: 'onBlur', reValidateMode: 'onChange' });
+  const form = useForm<FormValues>({ resolver: zodResolver(ledgerSchema), defaultValues: emptyValues(), mode: 'onTouched', reValidateMode: 'onChange' });
   const formWatch = form.watch;
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: 'receipts' });
   const currentMonth = form.watch('month');
